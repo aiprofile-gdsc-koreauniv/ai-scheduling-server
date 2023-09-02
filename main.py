@@ -246,7 +246,7 @@ async def requestGetAsync(url: str, timeout: int = None):
                 data = response.json()  # Parse JSON response
                 return (True, data)
             else:
-                return (False, response.json())
+                return (False, None)
         except httpx.RequestError as e:
             return (False, e)
 
