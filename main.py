@@ -278,7 +278,7 @@ async def syncUpdateAllEngineStatus():
     global engine_list
     cnt = 0
     for engine in engine_list:
-        (is_succ, response) = await requestGetAsync(f"{engine.url}/api/status/", timeout=ENGINE_STATUS_TIMEOUT)
+        (is_succ, response) = await requestGetAsync(f"{engine.url}/api/status", timeout=ENGINE_STATUS_TIMEOUT)
         if is_succ:
             cnt += 1
             engine.set_status(0)
