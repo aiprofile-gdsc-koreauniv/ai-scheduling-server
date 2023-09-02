@@ -8,7 +8,7 @@ import asyncio
 from logger import logger
 from config import ENGINE_URLS, ENGINE_PROCESS_TIMEOUT, ENGINE_STATUS_TIMEOUT, WAS_API_BASE_URL, VALID_JOB_STATE_STR
 import requests
-from models import EngineStatus, EngineRequest, JobAddPayload, WASResult, Job
+from models import EngineListUpdateParam, EngineStatus, EngineRequest, JobAddPayload, WASResult, Job
 import httpx
 from typing import List, Dict
 import os
@@ -37,6 +37,9 @@ default_job_state = {"datetime": "","pending": [], "in_process": [], "processed"
 #   - Gey ErrorList O
 #   - GET State-Sync O
 #   - Main Loop O 
+#   - DockerFile
+#   - Update Engine
+#   - DELETE job
 
 
 def on_start():
@@ -62,13 +65,15 @@ def syncJobStateFile():
         with open("schedule_state.json", "r") as file:
             tmp_state = json.load(file)
             for state_str in VALID_JOB_STATE_STR:
-                for job in tmp_state[state_str]:
-                    job_state[state_str].append(Job.from_json(job))
+                for job_json in tmp_state[state_str]:
+                    job_state[state_str].append(Job.from_json(job_json))
             job_state["datetime"] = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
     else:
         # If it doesn't exist, create it with the default structure
         with open("schedule_state.json", "w") as file:
-            json.dump(default_job_state, file, indent=4)
+            tmp_state = default_job_state
+            tmp_state["datetime"] = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+            json.dump(tmp_state, file, indent=4)
     return
 
 
@@ -77,8 +82,7 @@ def saveJobStateFile():
     time_str = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
     job_state["datetime"] = time_str
     with open("schedule_state.json", "w") as file:
-        tmp_state = job_state
-        tmp_state["datetime"] = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+        tmp_state = default_job_state
         for state_str in VALID_JOB_STATE_STR:
             for job in job_state[state_str]:
                 tmp_state[state_str].append(job.to_json())
@@ -93,7 +97,7 @@ def syncInitEngineStatus():
     for idx, engine in  enumerate(engine_list):
         logger.info(f"Init-EngineCheck:{engine.url} - status: Connecting...")
         try:
-            response = requests.get(f"{engine.url}/api/status/", timeout=ENGINE_STATUS_TIMEOUT)
+            response = requests.get(f"{engine.url}/api/status", timeout=ENGINE_STATUS_TIMEOUT)
             if response.status_code // 100 == 2:
                 cnt += 1
                 engine.set_status(0)
@@ -115,7 +119,7 @@ def getAvailableEngine() -> EngineStatus | None:
 
 def syncCheckEngineStatus(engine)->bool:
     try:
-        response = requests.get(f"{engine.url}/api/status/", timeout=ENGINE_STATUS_TIMEOUT)
+        response = requests.get(f"{engine.url}/api/status", timeout=ENGINE_STATUS_TIMEOUT)
         if response.status_code // 100 == 2:
             logger.info(f"EngineCheck - BeforeProcess :{engine.url} - status: CONNECTED")
             return True
@@ -159,25 +163,27 @@ async def dispatch_job():
             # Job State Transfer
             job_state["in_process"].remove(job)
             job_state["processed"].append(job)
-            payloadResult = WASResult(id=engine_response.id, error=is_succ, image_paths=engine_response.image_paths)
+            payloadResult = WASResult(id=engine_response["id"], error=is_succ, image_paths=engine_response["image_paths"])
             logger.info(f"Job: {job.id} processed at {engine.url} - {job.processed_time}")
         else:
             # Job State Transfer
             job_state["in_process"].remove(job)
             job_state["error"].append(job)
-            payloadResult = WASResult(id=engine_response.id, error=is_succ, image_paths=[])
+            payloadResult = WASResult(id=job.id, error=is_succ, image_paths=[])
             logger.error(f"Job: {job.id} ERROR at {engine.url} - {job.processed_time}")
+            requests.post("https://ntfy.sh/horangstudio-ai-scheduler",
+                data=f"Scheduler-Error id:{job.id}\ndate:{time_str} 🔥\ndetail: EngineFail".encode(encoding='utf-8'))
 
         
         # Engine State Transfer
         engine.set_status(0)
         
         # WAS Result
-        # TODO: API docs required
         is_succ, was_response = await requestPostAsync(url=f"{WAS_API_BASE_URL}/i2i/result", payload=payloadResult)
         if not is_succ:
             time_str = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
             logger.error(f"Job: {job.id} ERROR at WAS - {time_str}")
+            
             writeErrorList(job.id, "WAS_FAIL")
             
     except Exception as e:
@@ -206,7 +212,7 @@ async def dispatch_job():
         engine.set_status(0)
         
         # Notify
-        requests.post("https://ntfy.sh/kyumin_horangstudio-ai-scheduler",
+        requests.post("https://ntfy.sh/horangstudio-ai-scheduler",
             data=f"Scheduler-Error id:{job.id}\ndate:{time_str} 🔥\ndetail: {e}".encode(encoding='utf-8'))
         return
 
@@ -251,7 +257,7 @@ async def health_check():
     return {"status": 200, "time": time_str }
 
 
-@app.get("/api/engine/")
+@app.get("/api/engine")
 async def getEngineList():
     global engine_list
     cnt = 0
@@ -267,7 +273,7 @@ async def getEngineList():
         )
 
 
-@app.get("/api/engine/update")
+@app.get("/api/engine/status")
 async def syncUpdateAllEngineStatus():
     global engine_list
     cnt = 0
@@ -289,6 +295,25 @@ async def syncUpdateAllEngineStatus():
         )
 
 
+@app.patch("/api/engine")
+def updateEngineList(item: EngineListUpdateParam):
+    try:
+        response = requests.get(f"{item.engine_url}/api/status", timeout=ENGINE_STATUS_TIMEOUT)
+        if response.status_code // 100 == 2:
+            engine = EngineStatus(url=item.engine_url, status=0)
+            engine_list.append(engine)
+            logger.info(f"New-EngineCheck:{engine.url} - status: CONNECTED")
+        else:
+            logger.error(f"New-EngineCheck:{item.engine_url} - status: NO_CONNECTION")
+    except :
+        logger.error(f"Init-EngineCheck:{item.engine_url} - status: ERROR")
+    return JSONResponse(
+            status_code=200,
+            content={"datetime": time_str,
+                     "engine_list": len(engine_list),
+                     "detail": [engine.to_json() for engine in engine_list]})
+
+
 @app.get("/api/job/sync")
 async def getJobState():
     saveJobStateFile()
@@ -304,7 +329,7 @@ async def getJobState():
         )
 
 
-@app.get("/api/job/")
+@app.get("/api/job")
 async def getJobState():
     global job_state
     tmp_state = default_job_state

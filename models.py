@@ -31,14 +31,17 @@ class Job:
     #   0 : pending
     #   1 : processing
     #  -1 : proccessed
-    def __init__(self, id: str, image_paths: List[str], is_male: bool, is_black: bool,recieved_time: str):
+    
+    def __init__(self, id: str, image_paths: List[str], is_male: bool, is_black: bool,recieved_time: str, dispatched_time:str=None, processed_time:str=None):
         self.id: str = id
         self.image_paths: List[str] = image_paths
         self.is_male: bool = is_male
         self.is_black:bool = is_black
         self.recieved_time: str = recieved_time
-        self.dispatched_time: str = ""
-        self.processed_time: str = ""
+        if dispatched_time is None: self.dispatched_time: str = dispatched_time
+        else: self.dispatched_time: str = ""
+        if processed_time is None: self.processed_time: str = processed_time
+        else: self.processed_time: str = ""
     
     def to_json(self):
         return {
@@ -48,7 +51,7 @@ class Job:
                 "is_male": self.is_male,
                 "is_black": self.is_black
             },
-            "received_time": self.recieved_time,
+            "recieved_time": self.recieved_time,
             "dispatched_time": self.dispatched_time,
             "processed_time": self.processed_time
         }
@@ -60,7 +63,7 @@ class Job:
             image_paths=data["image_paths"],
             is_male=data["param"]["is_male"],
             is_black=data["param"]["is_black"],
-            received_time=data["received_time"],
+            recieved_time=data["recieved_time"],
             dispatched_time=data["dispatched_time"],
             processed_time=data["processed_time"]
         )
@@ -107,3 +110,8 @@ class JobAddPayload(BaseModel):
     id: str
     param: ImgParam
     imagePaths: List[str]
+
+
+class EngineListUpdateParam(BaseModel):
+    engine_url: str
+    
