@@ -179,7 +179,7 @@ async def dispatch_job():
         engine.set_status(0)
         
         # WAS Result
-        is_succ, was_response = await requestPostAsync(url=f"{WAS_API_BASE_URL}/i2i/result", payload=payloadResult)
+        is_succ, was_response = await requestPostAsync(url=f"{WAS_API_BASE_URL}/i2i/result", payload=payloadResult.to_json())
         if not is_succ:
             time_str = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
             logger.error(f"Job: {job.id} ERROR at WAS - {time_str}")
