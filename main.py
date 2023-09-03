@@ -61,8 +61,8 @@ def on_start():
 
 def writeErrorList(id:str, detail:str):
     time_str = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-    with open("error.txt", "r") as file:
-        file.write(f"{time_str} id:{id} detail:{detail}")
+    with open("error.txt", "a") as file:
+        file.write(f"{time_str} id:{id} detail:{detail}\n")
 
 
 def syncJobStateFile():
