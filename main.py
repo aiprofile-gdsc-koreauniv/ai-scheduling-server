@@ -173,17 +173,17 @@ async def dispatch_job():
             job_state["in_process"].remove(job)
             job_state["processed"].append(job)
             payloadResult = WASResult(id=engine_response["id"], error=is_succ, image_paths=engine_response["image_paths"])
-            logger.info(f"Job:{job.id} processed at {engine.url} - {job.processed_time}")
+            logger.info(f"Job:{job.id} engine processed - {job.processed_time}")
         else:
             # Job State Transfer
             job_state["in_process"].remove(job)
             job_state["error"].append(job)
             payloadResult = WASResult(id=job.id, error=is_succ, image_paths=[])
-            logger.error(f"Job:{job.id} ERROR at {engine.url} - {job.processed_time}")
+            logger.error(f"Job:{job.id} engine ERROR - {job.processed_time} {engine.url}")
             requests.post("https://ntfy.sh/horangstudio-scheduler",
                 data=f"Scheduler-Error id:{job.id}\ndate:{time_str} 🔥\ndetail: EngineFail".encode(encoding='utf-8'))
-
-        
+            
+            
         # Engine State Transfer
         engine.set_status(0)
         
@@ -191,10 +191,12 @@ async def dispatch_job():
         is_succ, was_response = await requestPostAsync(url=f"{WAS_API_BASE_URL}/i2i/result", payload=payloadResult.to_json(), timeout=ENGINE_STATUS_TIMEOUT, checkBody=False)
         if not is_succ:
             time_str = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-            logger.error(f"Job:{job.id} ERROR at WAS - {time_str}")
-            
+            logger.error(f"Job:{job.id}  WAS ERROR - {time_str}")
             writeErrorList(job.id, "WAS_FAIL")
-            
+        
+        logger.info(f"Job:{job.id} Done!")
+        requests.post("https://ntfy.sh/horangstudio-approval",
+                data=f"처리 완료 id:{job.id} 👍👍 \ndate:{time_str}".encode(encoding='utf-8'))
     except:
         # EngineStateTransfer
         engine.set_status(0)
