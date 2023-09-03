@@ -13,6 +13,7 @@ import httpx
 from typing import List, Dict
 import os
 import json
+import copy
 
 
 app = FastAPI(
@@ -79,7 +80,7 @@ def syncJobStateFile():
     else:
         # If it doesn't exist, create it with the default structure
         with open("schedule_state.json", "w") as file:
-            tmp_state = default_job_state
+            tmp_state = copy.deepcopy(default_job_state)
             tmp_state["datetime"] = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
             json.dump(tmp_state, file, indent=4)
     return
@@ -90,7 +91,7 @@ def saveJobStateFile():
     time_str = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
     job_state["datetime"] = time_str
     with open("schedule_state.json", "w") as file:
-        tmp_state = default_job_state
+        tmp_state = copy.deepcopy(default_job_state)
         for state_str in VALID_JOB_STATE_STR:
             for job in job_state[state_str]:
                 tmp_state[state_str].append(job.to_json())
@@ -179,7 +180,7 @@ async def dispatch_job():
             job_state["error"].append(job)
             payloadResult = WASResult(id=job.id, error=is_succ, image_paths=[])
             logger.error(f"Job:{job.id} ERROR at {engine.url} - {job.processed_time}")
-            requests.post("https://ntfy.sh/horangstudio-ai-scheduler",
+            requests.post("https://ntfy.sh/horangstudio-scheduler",
                 data=f"Scheduler-Error id:{job.id}\ndate:{time_str} 🔥\ndetail: EngineFail".encode(encoding='utf-8'))
 
         
@@ -200,13 +201,15 @@ async def dispatch_job():
         
         # JobStateTransfer
         dangling_job = False
-        if job in job_state["pending"]:
-            job_state["pending"].remove(job)
-        elif job in job_state["in_process"]:
-            job_state["in_process"].remove(job)
-        elif job in job_state["processed"]:
-            job_state["processed"].remove(job)
-        else:
+        pendingDuplicatedJobList = findAllJobById(job_state["pending"], job)
+        in_processDuplicatedJobList = findAllJobById(job_state["in_process"], job)
+        
+        if len(pendingDuplicatedJobList) != 0:
+            removeJobByList(pendingDuplicatedJobList, "pending")
+        if len(in_processDuplicatedJobList) != 0:
+            removeJobByList(in_processDuplicatedJobList, "in_process")
+            
+        if len(in_processDuplicatedJobList) == 0 and len(pendingDuplicatedJobList) == 0:
             dangling_job = True
         
         # If dangling
@@ -216,14 +219,30 @@ async def dispatch_job():
             writeErrorList(job.id, "ERROR")
         
         # JobStateTransfer to error
-        if job in job_state["error"]:
+        if len(findAllJobById(job_state["error"], job)) == 0:
             job_state["error"].append(job)
         
         # Notify
         time_str = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-        requests.post("https://ntfy.sh/horangstudio-ai-scheduler",
+        requests.post("https://ntfy.sh/horangstudio-scheduler",
             data=f"Scheduler-Error id:{job.id} 🔥🔥🔥\ndate:{time_str} 🔥".encode(encoding='utf-8'))
         return
+
+
+def findAllJobById(job_list: List[Job], target_job: Job)-> List[Job]:
+    result = []
+    for job_ in job_list:
+        if job_.id == target_job.id:
+            result.append(job_)
+    return result
+
+
+def removeJobByList(target_list: List[Job], state_str: str):
+    if state_str not in VALID_JOB_STATE_STR:
+        logger.error(f"Error: InvalidState str {state_str} in removing")
+        return
+    for target_job in target_list:
+        job_state[state_str].remoce(target_job)
 
 
 async def requestPostAsync(url: str, payload, headers=None, timeout: int=None, checkError:bool = True):
@@ -348,7 +367,7 @@ async def getJobState():
 @app.get("/api/job")
 async def getJobState():
     global job_state
-    tmp_state = default_job_state
+    tmp_state = copy.deepcopy(default_job_state)
     tmp_state["datetime"] = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
     for state_str in VALID_JOB_STATE_STR:
         for job in job_state[state_str]:
