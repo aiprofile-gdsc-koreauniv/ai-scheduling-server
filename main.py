@@ -195,6 +195,9 @@ async def dispatch_job():
             writeErrorList(job.id, "WAS_FAIL")
             
     except:
+        # EngineStateTransfer
+        engine.set_status(0)
+        
         # JobStateTransfer
         dangling_job = False
         if job in job_state["pending"]:
@@ -216,10 +219,8 @@ async def dispatch_job():
         if job in job_state["error"]:
             job_state["error"].append(job)
         
-        # EngineStateTransfer
-        engine.set_status(0)
-        
         # Notify
+        time_str = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
         requests.post("https://ntfy.sh/horangstudio-ai-scheduler",
             data=f"Scheduler-Error id:{job.id} 🔥🔥🔥\ndate:{time_str} 🔥".encode(encoding='utf-8'))
         return
@@ -424,8 +425,9 @@ def handle_job_exception(event):
     # TODO : Notification
     exception = event.exception
     saveJobStateFile()
-    logger.error(f"SCHEDULER-JOB-EXCEPTION!@#!@%!@#!@$%!@$!@#!@#")
-    print(f"An exception occurred while executing job {event}: {exception}")
+    logger.error(f"**************SCHEDULER-JOB-EXCEPTION!*************")
+    logger.error(f"An exception occurred while executing job {event}: {exception}")
+    logger.error(f"***************************************************")
 
 # Stop the scheduler when the app stops
 @app.on_event("shutdown")
