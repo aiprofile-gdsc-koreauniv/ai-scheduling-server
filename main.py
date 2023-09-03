@@ -15,7 +15,14 @@ import os
 import json
 
 
-app = FastAPI()
+app = FastAPI(
+    title="AI-Profile-Scheduler-Server",
+    description="ai-profile 프로젝트의 AI-Scheduler Server입니다.\n\n 서비스 URL: [호랑이 사진관](https://horangstudio.com)",
+    contact={
+        "name": "Kyumin Kim",
+        "email": "dev.kyoomin@gmail.com",
+    },
+)
 
 scheduler = AsyncIOScheduler(job_defaults={'max_instances': 3})
 
@@ -48,6 +55,7 @@ def on_start():
     
     # Engine State Check
     syncInitEngineStatus()
+    logger.info(f"************* Scheduler Start *************")
     return
 
 
@@ -152,7 +160,7 @@ async def dispatch_job():
         job.dispatched_time = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
         
         # Process Job-EngineRequest
-        logger.info(f"Job: {job.id} dispatched to {engine.url} - {job.dispatched_time}")
+        logger.info(f"Job:{job.id} dispatched to {engine.url} - {job.dispatched_time}")
         engine_request_payload = EngineRequest(id=job.id, is_male=job.is_male,is_black=job.is_black ,image_paths=job.image_paths)
         is_succ, engine_response = await requestPostAsync(url=f"{engine.url}/api/img/process", payload=engine_request_payload.to_json(), headers={"id":job.id}, timeout=ENGINE_PROCESS_TIMEOUT)
         
@@ -164,13 +172,13 @@ async def dispatch_job():
             job_state["in_process"].remove(job)
             job_state["processed"].append(job)
             payloadResult = WASResult(id=engine_response["id"], error=is_succ, image_paths=engine_response["image_paths"])
-            logger.info(f"Job: {job.id} processed at {engine.url} - {job.processed_time}")
+            logger.info(f"Job:{job.id} processed at {engine.url} - {job.processed_time}")
         else:
             # Job State Transfer
             job_state["in_process"].remove(job)
             job_state["error"].append(job)
             payloadResult = WASResult(id=job.id, error=is_succ, image_paths=[])
-            logger.error(f"Job: {job.id} ERROR at {engine.url} - {job.processed_time}")
+            logger.error(f"Job:{job.id} ERROR at {engine.url} - {job.processed_time}")
             requests.post("https://ntfy.sh/horangstudio-ai-scheduler",
                 data=f"Scheduler-Error id:{job.id}\ndate:{time_str} 🔥\ndetail: EngineFail".encode(encoding='utf-8'))
 
@@ -182,11 +190,11 @@ async def dispatch_job():
         is_succ, was_response = await requestPostAsync(url=f"{WAS_API_BASE_URL}/i2i/result", payload=payloadResult.to_json())
         if not is_succ:
             time_str = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-            logger.error(f"Job: {job.id} ERROR at WAS - {time_str}")
+            logger.error(f"Job:{job.id} ERROR at WAS - {time_str}")
             
             writeErrorList(job.id, "WAS_FAIL")
             
-    except Exception as e:
+    except:
         # JobStateTransfer
         dangling_job = False
         if job in job_state["pending"]:
@@ -213,7 +221,7 @@ async def dispatch_job():
         
         # Notify
         requests.post("https://ntfy.sh/horangstudio-ai-scheduler",
-            data=f"Scheduler-Error id:{job.id}\ndate:{time_str} 🔥\ndetail: {e}".encode(encoding='utf-8'))
+            data=f"Scheduler-Error id:{job.id} 🔥🔥🔥\ndate:{time_str} 🔥".encode(encoding='utf-8'))
         return
 
 
