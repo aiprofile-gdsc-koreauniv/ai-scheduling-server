@@ -188,7 +188,7 @@ async def dispatch_job():
         engine.set_status(0)
         
         # WAS Result
-        is_succ, was_response = await requestPostAsync(url=f"{WAS_API_BASE_URL}/i2i/result", payload=payloadResult.to_json())
+        is_succ, was_response = await requestPostAsync(url=f"{WAS_API_BASE_URL}/i2i/result", payload=payloadResult.to_json(), timeout=ENGINE_STATUS_TIMEOUT, checkBody=False)
         if not is_succ:
             time_str = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
             logger.error(f"Job:{job.id} ERROR at WAS - {time_str}")
@@ -245,19 +245,26 @@ def removeJobByList(target_list: List[Job], state_str: str):
         job_state[state_str].remoce(target_job)
 
 
-async def requestPostAsync(url: str, payload, headers=None, timeout: int=None, checkError:bool = True):
+async def requestPostAsync(url: str, payload, headers=None, timeout: int=None, checkBody:bool = True):
     async with httpx.AsyncClient() as client:
         try:
             # Send async POST request to the external API
             response = await client.post(url, json=payload, timeout=httpx.Timeout(timeout), headers=headers)
 
             # Check if the request was successful (status code 200)
-            if response.status_code // 100 == 2:
-                data = response.json()  # Parse JSON response
-                return (True, data)
+            if checkBody:
+                if response.status_code // 100 == 2:
+                    data = response.json()  # Parse JSON response
+                    return (True, data)
+                else:
+                    logger.error(f"Error - POST - url: {url} - detail: {response.json()}")
+                    return (False, response.json())
             else:
-                logger.error(f"Error - POST - url: {url} - detail: {response.json()}")
-                return (False, response.json())
+                if response.status_code // 100 == 2:
+                    return (True, None)
+                else:
+                    logger.error(f"Error - POST - url: {url} - detail: {response.json()}")
+                    return (False, None)
         except httpx.RequestError as e:
             logger.error(f"Error - POST - url: {url} - detail: {e}")
             return (False, e)
