@@ -181,7 +181,7 @@ async def dispatch_job():
             payloadResult = WASResult(id=job.id, error=True, image_paths=[])
             logger.error(f"Job:{job.id} engine ERROR - {job.processed_time} {engine.url}")
             requests.post("https://ntfy.sh/horangstudio-scheduler",
-                data=f"Scheduler-Error id:{job.id}\ndate:{time_str} 🔥\ndetail: EngineFail".encode(encoding='utf-8'))
+                data=f"Scheduler-Error id:{job.id}\ndate:{job.processed_time} 🔥\ndetail: EngineFail".encode(encoding='utf-8'))
             
             
         # Engine State Transfer
