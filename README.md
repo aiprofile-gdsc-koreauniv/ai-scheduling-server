@@ -3,7 +3,8 @@ Scheduling server for scheduling ai-profile generation jobs
 
 Restores and Synchronizes job scheduling state via `schedule_state.json` file. (which is created at initial run)
 
-engines(ai-server) are configurable by REST-API at runtime.
+Supports job status retrieval & engine status(ai-server) configuration by REST-API at runtime.
+
 
 
 ## 1. Build&Run
