@@ -226,7 +226,7 @@ async def dispatch_job():
         return
 
 
-async def requestPostAsync(url: str, payload, headers=None, timeout: int=None):
+async def requestPostAsync(url: str, payload, headers=None, timeout: int=None, checkError:bool = True):
     async with httpx.AsyncClient() as client:
         try:
             # Send async POST request to the external API
@@ -237,11 +237,14 @@ async def requestPostAsync(url: str, payload, headers=None, timeout: int=None):
                 data = response.json()  # Parse JSON response
                 return (True, data)
             else:
-                logger.error(f"Error - POST - url: {url} - detail: {response}")
+                logger.error(f"Error - POST - url: {url} - detail: {response.json()}")
                 return (False, response.json())
         except httpx.RequestError as e:
             logger.error(f"Error - POST - url: {url} - detail: {e}")
             return (False, e)
+        except:
+            logger.error(f"Error - POST - url: {url} - detail: Unknown")
+            return (False, None)
 
 
 async def requestGetAsync(url: str, timeout: int = None):
@@ -258,6 +261,10 @@ async def requestGetAsync(url: str, timeout: int = None):
                 return (False, None)
         except httpx.RequestError as e:
             return (False, e)
+        except:
+            logger.error(f"Error - GET - url: {url} - detail: Unknown")
+            return (False, None)
+
 
 
 @app.get("/health")
