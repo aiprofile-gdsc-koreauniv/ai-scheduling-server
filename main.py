@@ -130,7 +130,7 @@ def syncCheckEngineStatus(engine)->bool:
     try:
         response = requests.get(f"{engine.url}/api/status", timeout=ENGINE_STATUS_TIMEOUT)
         if response.status_code // 100 == 2:
-            logger.info(f"EngineCheck - BeforeProcess :{engine.url} - status: CONNECTED")
+            # logger.info(f"EngineCheck - BeforeProcess :{engine.url} - status: CONNECTED")
             return True
     except:
         pass
@@ -181,7 +181,7 @@ async def dispatch_job():
             payloadResult = WASResult(id=job.id, error=True, image_paths=[])
             logger.error(f"Job:{job.id} engine ERROR - {job.processed_time} {engine.url}")
             requests.post("https://ntfy.sh/horangstudio-scheduler",
-                data=f"Scheduler-Error id:{job.id}\ndate:{job.processed_time} 🔥\ndetail: EngineFail".encode(encoding='utf-8'))
+                data=f"Job:{job.id} engine ERROR\ndate:{job.processed_time} 🔥\ndetail: EngineFail".encode(encoding='utf-8'))
             
             
         # Engine State Transfer
@@ -193,6 +193,9 @@ async def dispatch_job():
             time_str = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
             logger.error(f"Job:{job.id}  WAS ERROR - {time_str}")
             writeErrorList(job.id, "WAS_FAIL")
+        
+        # Remove Job from error if re-requested
+        removeJobByList(findAllJobById(job_state["error"], job), "error")
         
         logger.info(f"Job:{job.id} Done!")
         requests.post("https://ntfy.sh/horangstudio-approval",
@@ -227,7 +230,7 @@ async def dispatch_job():
         # Notify
         time_str = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
         requests.post("https://ntfy.sh/horangstudio-scheduler",
-            data=f"Scheduler-Error id:{job.id} 🔥🔥🔥\ndate:{time_str} 🔥".encode(encoding='utf-8'))
+            data=f"Job:{job.id} 🔥🔥🔥\ndate:{time_str} 🔥".encode(encoding='utf-8'))
         return
 
 
@@ -317,7 +320,7 @@ async def getEngineList():
         )
 
 
-@app.get("/api/engine/status")
+@app.get("/api/engine/update")
 async def syncUpdateAllEngineStatus():
     global engine_list
     cnt = 0
@@ -460,6 +463,9 @@ def handle_job_exception(event):
     # TODO : Notification
     exception = event.exception
     saveJobStateFile()
+    time_str = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+    requests.post("https://ntfy.sh/horangstudio-scheduler",
+            data=f"Scheduler shutdown 🔥🔥🔥\n {time_str}🔥".encode(encoding='utf-8'))
     logger.error(f"**************SCHEDULER-JOB-EXCEPTION!*************")
     logger.error(f"An exception occurred while executing job {event}: {exception}")
     logger.error(f"***************************************************")
