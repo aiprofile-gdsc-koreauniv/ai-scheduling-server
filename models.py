@@ -32,11 +32,12 @@ class Job:
     #   1 : processing
     #  -1 : proccessed
     
-    def __init__(self, id: str, image_paths: List[str], is_male: bool, is_black: bool,recieved_time: str, dispatched_time:str=None, processed_time:str=None):
+    def __init__(self, id: str, image_paths: List[str], is_male: bool, is_black: bool,is_blonde:bool, recieved_time: str, dispatched_time:str=None, processed_time:str=None):
         self.id: str = id
         self.image_paths: List[str] = image_paths
         self.is_male: bool = is_male
         self.is_black:bool = is_black
+        self.is_blonde: bool = is_blonde,
         self.recieved_time: str = recieved_time
         if dispatched_time is None: self.dispatched_time: str = dispatched_time
         else: self.dispatched_time: str = ""
@@ -49,7 +50,8 @@ class Job:
             "image_paths": self.image_paths,
             "param": {
                 "is_male": self.is_male,
-                "is_black": self.is_black
+                "is_black": self.is_black,
+                "is_blonde": self.is_blonde
             },
             "recieved_time": self.recieved_time,
             "dispatched_time": self.dispatched_time,
@@ -63,6 +65,7 @@ class Job:
             image_paths=data["image_paths"],
             is_male=data["param"]["is_male"],
             is_black=data["param"]["is_black"],
+            is_blonde=data["param"]["is_blonde"],
             recieved_time=data["recieved_time"],
             dispatched_time=data["dispatched_time"],
             processed_time=data["processed_time"]
@@ -72,10 +75,11 @@ class Job:
 
 
 class EngineRequest:
-    def __init__(self, id: str, is_male:bool, is_black:bool, image_paths: List[str]):
+    def __init__(self, id: str, is_male:bool, is_black:bool,is_blonde:bool, image_paths: List[str]):
         self.id = id
         self.is_male = is_male
         self.is_black = is_black
+        self.is_blonde = is_blonde
         self.image_paths = image_paths
 
     def to_json(self):
@@ -83,7 +87,8 @@ class EngineRequest:
             "id": self.id,
             "param": {
                 "is_male": self.is_male,
-                "is_black": self.is_black
+                "is_black": self.is_black,
+                "is_blonde": self.is_blonde
             },
             "image_paths": self.image_paths
         }
@@ -105,6 +110,7 @@ class WASResult:
 class ImgParam(BaseModel):
     is_male: bool
     is_black: bool
+    is_blonde: bool
 
 class JobAddPayload(BaseModel):
     id: str

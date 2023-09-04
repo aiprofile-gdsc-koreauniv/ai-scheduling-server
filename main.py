@@ -162,7 +162,7 @@ async def dispatch_job():
         
         # Process Job-EngineRequest
         logger.info(f"Job:{job.id} dispatched to {engine.url} - {job.dispatched_time}")
-        engine_request_payload = EngineRequest(id=job.id, is_male=job.is_male,is_black=job.is_black ,image_paths=job.image_paths)
+        engine_request_payload = EngineRequest(id=job.id, is_male=job.is_male,is_black=job.is_black, is_blonde=job.is_blonde, image_paths=job.image_paths)
         is_succ, engine_response = await requestPostAsync(url=f"{engine.url}/api/img/process", payload=engine_request_payload.to_json(), headers={"id":job.id}, timeout=ENGINE_PROCESS_TIMEOUT)
         
         
@@ -445,7 +445,7 @@ async def getJobStateError():
 
 @app.post("/api/job")
 async def appendNewJob(item: JobAddPayload):
-    new_job = Job(id=item.id, image_paths=item.imagePaths, is_male=item.param.is_male, is_black=item.param.is_black, recieved_time=datetime.now().strftime("%Y-%m-%d-%H:%M:%S"))
+    new_job = Job(id=item.id, image_paths=item.imagePaths, is_male=item.param.is_male, is_black=item.param.is_black, is_blonde=item.param.is_blonde, recieved_time=datetime.now().strftime("%Y-%m-%d-%H:%M:%S"))
     time_str = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
     logger.info(f"Job: {new_job.id} recieved - {time_str}")
     job_state["pending"].append(new_job)
