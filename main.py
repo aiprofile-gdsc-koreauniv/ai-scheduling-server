@@ -177,11 +177,18 @@ async def dispatch_job():
         else:
             # Job State Transfer
             job_state["in_process"].remove(job)
+            
+            # Remove Job from error if re-requested
+            removeJobByList(findAllJobById(job_state["error"], job), "error")
+            
+            # Add unique job to error
             job_state["error"].append(job)
+            
             payloadResult = WASResult(id=job.id, error=True, image_paths=[])
             logger.error(f"Job:{job.id} engine ERROR - {job.processed_time} {engine.url}")
             requests.post("https://ntfy.sh/horangstudio-scheduler",
                 data=f"Job:{job.id} engine ERROR\ndate:{job.processed_time} 🔥\ndetail: EngineFail".encode(encoding='utf-8'))
+            
             
             
         # Engine State Transfer
@@ -210,6 +217,9 @@ async def dispatch_job():
             # JobStateTransfer to error
             if len(findAllJobById(job_state["error"], job)) == 0:
                 job_state["error"].append(job)
+            return
+        
+        if payloadResult.error:
             return
         
         # Remove Job from error if re-requested
