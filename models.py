@@ -32,12 +32,12 @@ class Job:
     #   1 : processing
     #  -1 : proccessed
     
-    def __init__(self, id: str, image_paths: List[str], is_male: bool, is_black: bool,is_blonde:bool, recieved_time: str, dispatched_time:str=None, processed_time:str=None):
+    def __init__(self, id: str, image_paths: List[str], is_male: bool, is_black: bool, is_blonde: bool, recieved_time: str, dispatched_time:str=None, processed_time:str=None):
         self.id: str = id
         self.image_paths: List[str] = image_paths
         self.is_male: bool = is_male
         self.is_black:bool = is_black
-        self.is_blonde: bool = is_blonde,
+        self.is_blonde: bool = is_blonde
         self.recieved_time: str = recieved_time
         if dispatched_time is None: self.dispatched_time: str = dispatched_time
         else: self.dispatched_time: str = ""
@@ -109,8 +109,9 @@ class WASResult:
 
 class ImgParam(BaseModel):
     is_male: bool
-    is_black: bool
     is_blonde: bool
+    is_black: bool
+    
 
 class JobAddPayload(BaseModel):
     id: str

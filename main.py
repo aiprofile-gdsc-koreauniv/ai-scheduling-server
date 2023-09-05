@@ -193,13 +193,34 @@ async def dispatch_job():
             time_str = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
             logger.error(f"Job:{job.id}  WAS ERROR - {time_str}")
             writeErrorList(job.id, "WAS_FAIL")
+            requests.post("https://ntfy.sh/horangstudio-scheduler",
+                data=f"Job:{job.id} was ERROR\ndate:{job.processed_time} 🔥\ndetail: WAS".encode(encoding='utf-8'))
+            # EngineStateTransfer
+            engine.set_status(0)
+            
+            # JobStateTransfer
+            pendingDuplicatedJobList = findAllJobById(job_state["pending"], job)
+            in_processDuplicatedJobList = findAllJobById(job_state["in_process"], job)
+            
+            if len(pendingDuplicatedJobList) != 0:
+                removeJobByList(pendingDuplicatedJobList, "pending")
+            if len(in_processDuplicatedJobList) != 0:
+                removeJobByList(in_processDuplicatedJobList, "in_process")
+            
+            # JobStateTransfer to error
+            if len(findAllJobById(job_state["error"], job)) == 0:
+                job_state["error"].append(job)
+            return
         
         # Remove Job from error if re-requested
         removeJobByList(findAllJobById(job_state["error"], job), "error")
         
         logger.info(f"Job:{job.id} Done!")
-        requests.post("https://ntfy.sh/horangstudio-approval",
-                data=f"처리 완료 id:{job.id} 👍👍 \ndate:{time_str}".encode(encoding='utf-8'))
+        
+        time_str = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+        requests.post("https://ntfy.sh/horangstudio-approval", data=f"처리 완료 id:{job.id} 👍👍 \ndate:{time_str}".encode(encoding='utf-8'))
+
+        return
     except:
         # EngineStateTransfer
         engine.set_status(0)
@@ -230,7 +251,7 @@ async def dispatch_job():
         # Notify
         time_str = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
         requests.post("https://ntfy.sh/horangstudio-scheduler",
-            data=f"Job:{job.id} 🔥🔥🔥\ndate:{time_str} 🔥".encode(encoding='utf-8'))
+            data=f"Job:{job.id} 🔥\ndate:{time_str}".encode(encoding='utf-8'))
         return
 
 
