@@ -25,7 +25,7 @@ app = FastAPI(
     },
 )
 
-scheduler = AsyncIOScheduler(job_defaults={'max_instances': 3})
+scheduler = AsyncIOScheduler(job_defaults={'max_instances': 6})
 
 time_str = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
 engine_list: List[EngineStatus] = []
