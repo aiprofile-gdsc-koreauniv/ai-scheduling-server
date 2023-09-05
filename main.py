@@ -247,7 +247,7 @@ def removeJobByList(target_list: List[Job], state_str: str):
         logger.error(f"Error: InvalidState str {state_str} in removing")
         return
     for target_job in target_list:
-        job_state[state_str].remoce(target_job)
+        job_state[state_str].remove(target_job)
 
 
 async def requestPostAsync(url: str, payload, headers=None, timeout: int=None, checkBody:bool = True):
