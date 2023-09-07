@@ -5,8 +5,43 @@ Restores and Synchronizes job scheduling state via `schedule_state.json` file. (
 
 Supports job status retrieval & engine status(ai-server) configuration by REST-API at runtime.
 
+## Architecture
+```mermaid
+flowchart TD
+    A[Client] -->|Job| C{Scheduler}
+    C -->|Job| D[Engine1]
+    C -->|Job| E[Engine2]
+    C -->|Job| F[Engine3]
+```
 
-
+## Job sequence
+```mermaid
+sequenceDiagram
+    Scheduler->>+Engine: Healthcheck
+    Engine->>-Scheduler: Healthcheck reponse
+    Scheduler->>+Engine: Job Request
+    Engine->>+Model: Preprocess & Inference Request
+    Model-->>-Engine: Result | Error
+    Engine-->>+GCP: Result upload
+    Engine-->>-Scheduler: Response
+```
+## State Transfer
+### Job State
+```mermaid
+stateDiagram-v2
+    Pending --> InProcess
+    InProcess --> Processed
+    InProcess --> Error
+```
+### EngineStatus State
+```mermaid
+stateDiagram-v2
+    Ready --> InProcess
+    InProcess --> Ready
+    InProcess --> Error
+    Error --> Ready
+    Ready --> Error
+```
 ## 1. Build&Run
 ```bash
 # git clone prequisites
@@ -26,6 +61,8 @@ docker run -d \
    -v $PWD:/app \
    MY_CONTAINER_NAME
 ```
+
+
 
 ## 참고사항
 - docs-url : `http://localhost:MY_PORT/docs` 
